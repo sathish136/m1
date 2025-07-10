@@ -3152,34 +3152,51 @@ router.put('/api/leave-balances/:employeeId/:year', async (req, res) => {
   }
 });
 
+// Leave Balance Report with Automatic Deduction from Absences
 router.get('/api/leave-balances/report', async (req, res) => {
   try {
     const { year = new Date().getFullYear() } = req.query;
     
     const result = await db.execute(sql`
+      WITH absence_calculations AS (
+        SELECT 
+          e.id as employee_id,
+          e.employee_id as emp_id,
+          e.full_name,
+          d.name as department,
+          e.employee_group,
+          e.status,
+          e.join_date,
+          COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent_days,
+          45 as total_entitlement,
+          (45 - COUNT(CASE WHEN a.status = 'absent' THEN 1 END)) as remaining_days
+        FROM employees e
+        JOIN departments d ON e.department_id = d.id
+        LEFT JOIN attendance a ON e.id = a.employee_id 
+          AND EXTRACT(YEAR FROM a.date) = ${parseInt(year as string)}
+        WHERE e.status = 'active'
+        GROUP BY e.id, e.employee_id, e.full_name, d.name, e.employee_group, e.status, e.join_date
+      )
       SELECT 
-        e.employee_id,
-        e.full_name,
-        d.name as department,
-        e.employee_group,
-        e.status,
-        COALESCE(lb.annual_entitlement, 45) as total_entitlement,
-        COALESCE(lb.used_days, 0) as used_days,
-        COALESCE(lb.remaining_days, 45) as remaining_days,
-        ROUND((COALESCE(lb.used_days, 0) * 100.0 / 45), 1) as utilization_percentage,
+        emp_id as employee_id,
+        full_name,
+        department,
+        employee_group,
+        status,
+        total_entitlement,
+        absent_days as used_days,
+        remaining_days,
+        ROUND((absent_days * 100.0 / 45), 1) as utilization_percentage,
         CASE 
-          WHEN COALESCE(lb.remaining_days, 45) = 45 THEN 'Fully Available'
-          WHEN COALESCE(lb.remaining_days, 45) >= 30 THEN 'High Available'
-          WHEN COALESCE(lb.remaining_days, 45) >= 15 THEN 'Medium Available'
-          WHEN COALESCE(lb.remaining_days, 45) > 0 THEN 'Low Available'
+          WHEN remaining_days = 45 THEN 'Fully Available'
+          WHEN remaining_days >= 30 THEN 'High Available'
+          WHEN remaining_days >= 15 THEN 'Medium Available'
+          WHEN remaining_days > 0 THEN 'Low Available'
           ELSE 'Exhausted'
         END as eligibility_status,
-        e.join_date
-      FROM employees e
-      JOIN departments d ON e.department_id = d.id
-      LEFT JOIN leave_balances lb ON e.id = lb.employee_id AND lb.year = ${parseInt(year as string)}
-      WHERE e.status = 'active'
-      ORDER BY lb.remaining_days DESC, e.full_name
+        join_date
+      FROM absence_calculations
+      ORDER BY remaining_days DESC, full_name
     `);
     
     res.json(result.rows);
@@ -3189,29 +3206,42 @@ router.get('/api/leave-balances/report', async (req, res) => {
   }
 });
 
-// Leave Balance Statistics Endpoint
+// Leave Balance Statistics Endpoint with Automatic Deduction Calculation
 router.get('/api/leave-balances/stats', async (req, res) => {
   try {
     const { year = new Date().getFullYear() } = req.query;
     
+    // Calculate actual deductions from absences
     const result = await db.execute(sql`
+      WITH absence_counts AS (
+        SELECT 
+          e.id as employee_id,
+          e.employee_id as emp_id,
+          e.full_name,
+          COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent_days,
+          45 as total_entitlement,
+          (45 - COUNT(CASE WHEN a.status = 'absent' THEN 1 END)) as remaining_days
+        FROM employees e
+        LEFT JOIN attendance a ON e.id = a.employee_id 
+          AND EXTRACT(YEAR FROM a.date) = ${parseInt(year as string)}
+        WHERE e.status = 'active'
+        GROUP BY e.id, e.employee_id, e.full_name
+      )
       SELECT 
-        COUNT(DISTINCT e.id) as total_employees,
-        SUM(COALESCE(lb.annual_entitlement, 45)) as total_entitlement,
-        SUM(COALESCE(lb.used_days, 0)) as total_used,
-        ROUND(AVG(COALESCE(lb.used_days, 0) * 100.0 / 45), 1) as average_utilization,
-        COUNT(CASE WHEN COALESCE(lb.remaining_days, 45) = 45 THEN 1 END) as fully_available,
-        COUNT(CASE WHEN COALESCE(lb.remaining_days, 45) >= 30 AND COALESCE(lb.remaining_days, 45) < 45 THEN 1 END) as high_available,
-        COUNT(CASE WHEN COALESCE(lb.remaining_days, 45) >= 15 AND COALESCE(lb.remaining_days, 45) < 30 THEN 1 END) as medium_available,
-        COUNT(CASE WHEN COALESCE(lb.remaining_days, 45) > 0 AND COALESCE(lb.remaining_days, 45) < 15 THEN 1 END) as low_available,
-        COUNT(CASE WHEN COALESCE(lb.remaining_days, 45) = 0 THEN 1 END) as exhausted,
+        COUNT(*) as total_employees,
+        SUM(total_entitlement) as total_entitlement,
+        SUM(absent_days) as total_used,
+        ROUND(AVG(absent_days * 100.0 / 45), 1) as average_utilization,
+        COUNT(CASE WHEN remaining_days = 45 THEN 1 END) as fully_available,
+        COUNT(CASE WHEN remaining_days >= 30 AND remaining_days < 45 THEN 1 END) as high_available,
+        COUNT(CASE WHEN remaining_days >= 15 AND remaining_days < 30 THEN 1 END) as medium_available,
+        COUNT(CASE WHEN remaining_days > 0 AND remaining_days < 15 THEN 1 END) as low_available,
+        COUNT(CASE WHEN remaining_days <= 0 THEN 1 END) as exhausted,
         -- Policy Breakdown
         21 as annual_holidays,
         24 as special_holidays,
         45 as total_holiday_entitlement
-      FROM employees e
-      LEFT JOIN leave_balances lb ON e.id = lb.employee_id AND lb.year = ${parseInt(year as string)}
-      WHERE e.status = 'active'
+      FROM absence_counts
     `);
     
     res.json(result.rows[0]);
