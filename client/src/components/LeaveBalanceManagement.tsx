@@ -134,7 +134,7 @@ export default function LeaveBalanceManagement() {
                     </tr>
                   </thead>
                   <tbody>
-                    {leaveReport.map((employee: any, index: number) => (
+                    {Array.isArray(leaveReport) && leaveReport.map((employee: any, index: number) => (
                       <tr key={employee.employee_id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                         <td className="border border-gray-200 px-4 py-2 text-sm">{employee.employee_id}</td>
                         <td className="border border-gray-200 px-4 py-2 text-sm font-medium">{employee.full_name}</td>
@@ -166,6 +166,13 @@ export default function LeaveBalanceManagement() {
                         </td>
                       </tr>
                     ))}
+                    {(!Array.isArray(leaveReport) || leaveReport.length === 0) && (
+                      <tr>
+                        <td colSpan={8} className="border border-gray-200 px-4 py-8 text-center text-gray-500">
+                          No leave balance data available for {selectedYear}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
