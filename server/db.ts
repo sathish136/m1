@@ -3,7 +3,10 @@ import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
+// Configure WebSocket for Neon serverless - only in production
+if (process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('neon.tech')) {
+  neonConfig.webSocketConstructor = ws;
+}
 
 // For demo purposes, use a mock database connection if DATABASE_URL is not set
 let databaseUrl = process.env.DATABASE_URL;

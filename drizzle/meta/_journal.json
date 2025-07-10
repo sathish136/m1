@@ -15,6 +15,13 @@
       "when": 1751888928558,
       "tag": "0001_colorful_night_thrasher",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1752141397857,
+      "tag": "0002_keen_peter_quill",
+      "breakpoints": true
     }
   ]
 }
