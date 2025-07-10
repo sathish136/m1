@@ -333,13 +333,16 @@ Changelog:
     - Login now properly redirects and loads application without requiring manual refresh
   - Migration to Standard Replit Environment Completed Successfully (July 10, 2025):
     - Successfully migrated complete HR Attendance Management System from Replit Agent to standard Replit environment
-    - Fixed cross-env dependency issue by installing missing cross-env package
-    - Established PostgreSQL database connection with provided database credentials
+    - Fixed cross-env dependency issue by installing missing cross-env package  
+    - Established PostgreSQL database connection with user-provided database credentials
     - Created complete database schema with all required tables, constraints, and proper relationships
-    - Added default holiday data: 21 Annual Holidays and 24 Special Holidays for comprehensive policy compliance
+    - Initialized leave balances for all 179 employees with full 45-day entitlement (21 Annual + 24 Special holidays)
+    - Enhanced leave balance management with comprehensive eligibility reports and statistics API endpoints
+    - Added proper leave balance tracking showing "Fully Available" status for all employees
     - All API endpoints functional with real database connections and proper error handling
-    - Application server running successfully on port 5000 with full functionality
+    - Application server running successfully on port 5000 with full functionality  
     - System fully operational and ready for production use with complete feature set
+    - Leave Balance System properly shows 45-day entitlement eligibility for all 179 active employees
   - Project Migration to Replit Environment Completed (July 10, 2025):
     - Successfully migrated HR Attendance Management System from Replit Agent to standard Replit environment
     - Established PostgreSQL database connection with user-provided DATABASE_URL

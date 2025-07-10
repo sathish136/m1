@@ -3059,7 +3059,7 @@ function isGovernmentHoliday(date: Date): boolean {
 // Leave Balance API Endpoints
 router.get('/api/leave-balances', async (req, res) => {
   try {
-    const { employeeId, year } = req.query;
+    const { employeeId, year = new Date().getFullYear() } = req.query;
     let query = sql`
       SELECT 
         lb.employee_id,
@@ -3077,7 +3077,7 @@ router.get('/api/leave-balances', async (req, res) => {
     
     const conditions = [];
     if (employeeId) {
-      conditions.push(sql`lb.employee_id = ${parseInt(employeeId as string)}`);
+      conditions.push(sql`lb.employee_id = ${employeeId as string}`);
     }
     if (year) {
       conditions.push(sql`lb.year = ${parseInt(year as string)}`);
@@ -3162,27 +3162,99 @@ router.get('/api/leave-balances/report', async (req, res) => {
         e.full_name,
         d.name as department,
         e.employee_group,
-        COALESCE(lb.annual_entitlement, 45) as annual_entitlement,
+        e.status,
+        COALESCE(lb.annual_entitlement, 45) as total_entitlement,
         COALESCE(lb.used_days, 0) as used_days,
-        COALESCE(lb.remaining_days, 45 - COALESCE(lb.used_days, 0)) as remaining_days,
-        ROUND((COALESCE(lb.used_days, 0) * 100.0 / 45), 2) as utilization_percentage,
+        COALESCE(lb.remaining_days, 45) as remaining_days,
+        ROUND((COALESCE(lb.used_days, 0) * 100.0 / 45), 1) as utilization_percentage,
         CASE 
-          WHEN COALESCE(lb.used_days, 0) = 0 THEN 'No Leave Taken'
-          WHEN COALESCE(lb.used_days, 0) <= 10 THEN 'Low Usage'
-          WHEN COALESCE(lb.used_days, 0) <= 30 THEN 'Moderate Usage'
-          ELSE 'High Usage'
-        END as usage_category
+          WHEN COALESCE(lb.remaining_days, 45) = 45 THEN 'Fully Available'
+          WHEN COALESCE(lb.remaining_days, 45) >= 30 THEN 'High Available'
+          WHEN COALESCE(lb.remaining_days, 45) >= 15 THEN 'Medium Available'
+          WHEN COALESCE(lb.remaining_days, 45) > 0 THEN 'Low Available'
+          ELSE 'Exhausted'
+        END as eligibility_status,
+        e.join_date
       FROM employees e
       JOIN departments d ON e.department_id = d.id
       LEFT JOIN leave_balances lb ON e.id = lb.employee_id AND lb.year = ${parseInt(year as string)}
       WHERE e.status = 'active'
-      ORDER BY e.full_name
+      ORDER BY lb.remaining_days DESC, e.full_name
     `);
     
     res.json(result.rows);
   } catch (error) {
     console.error('Failed to generate leave balance report:', error);
     res.status(500).json({ message: 'Failed to generate leave balance report' });
+  }
+});
+
+// Leave Balance Statistics Endpoint
+router.get('/api/leave-balances/stats', async (req, res) => {
+  try {
+    const { year = new Date().getFullYear() } = req.query;
+    
+    const result = await db.execute(sql`
+      SELECT 
+        COUNT(DISTINCT e.id) as total_employees,
+        SUM(COALESCE(lb.annual_entitlement, 45)) as total_entitlement,
+        SUM(COALESCE(lb.used_days, 0)) as total_used,
+        ROUND(AVG(COALESCE(lb.used_days, 0) * 100.0 / 45), 1) as average_utilization,
+        COUNT(CASE WHEN COALESCE(lb.remaining_days, 45) = 45 THEN 1 END) as fully_available,
+        COUNT(CASE WHEN COALESCE(lb.remaining_days, 45) >= 30 AND COALESCE(lb.remaining_days, 45) < 45 THEN 1 END) as high_available,
+        COUNT(CASE WHEN COALESCE(lb.remaining_days, 45) >= 15 AND COALESCE(lb.remaining_days, 45) < 30 THEN 1 END) as medium_available,
+        COUNT(CASE WHEN COALESCE(lb.remaining_days, 45) > 0 AND COALESCE(lb.remaining_days, 45) < 15 THEN 1 END) as low_available,
+        COUNT(CASE WHEN COALESCE(lb.remaining_days, 45) = 0 THEN 1 END) as exhausted,
+        -- Policy Breakdown
+        21 as annual_holidays,
+        24 as special_holidays,
+        45 as total_holiday_entitlement
+      FROM employees e
+      LEFT JOIN leave_balances lb ON e.id = lb.employee_id AND lb.year = ${parseInt(year as string)}
+      WHERE e.status = 'active'
+    `);
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Failed to fetch leave balance statistics:', error);
+    res.status(500).json({ message: 'Failed to fetch leave balance statistics' });
+  }
+});
+
+// Leave Eligibility Report for 45-Day Entitlement
+router.get('/api/leave-balances/eligibility', async (req, res) => {
+  try {
+    const { year = new Date().getFullYear() } = req.query;
+    
+    const result = await db.execute(sql`
+      SELECT 
+        e.employee_id,
+        e.full_name,
+        d.name as department,
+        e.employee_group,
+        CASE 
+          WHEN COALESCE(lb.remaining_days, 45) = 45 THEN 'Fully Eligible - 45 Days Available'
+          WHEN COALESCE(lb.remaining_days, 45) >= 30 THEN 'High Eligibility - ' || COALESCE(lb.remaining_days, 45) || ' Days Available'
+          WHEN COALESCE(lb.remaining_days, 45) >= 15 THEN 'Medium Eligibility - ' || COALESCE(lb.remaining_days, 45) || ' Days Available'
+          WHEN COALESCE(lb.remaining_days, 45) > 0 THEN 'Low Eligibility - ' || COALESCE(lb.remaining_days, 45) || ' Days Available'
+          ELSE 'No Eligibility - Leave Exhausted'
+        END as eligibility_status,
+        COALESCE(lb.remaining_days, 45) as available_days,
+        COALESCE(lb.used_days, 0) as used_days,
+        21 as annual_entitlement,
+        24 as special_entitlement,
+        45 as total_entitlement
+      FROM employees e
+      JOIN departments d ON e.department_id = d.id
+      LEFT JOIN leave_balances lb ON e.id = lb.employee_id AND lb.year = ${parseInt(year as string)}
+      WHERE e.status = 'active'
+      ORDER BY COALESCE(lb.remaining_days, 45) DESC, e.full_name
+    `);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Failed to fetch leave eligibility report:', error);
+    res.status(500).json({ message: 'Failed to fetch leave eligibility report' });
   }
 });
 
