@@ -3156,9 +3156,20 @@ router.put('/api/leave-balances/:employeeId/:year', async (req, res) => {
 router.get('/api/leave-balances/report', async (req, res) => {
   try {
     const { year = new Date().getFullYear() } = req.query;
+    const currentYear = parseInt(year as string);
     
     const result = await db.execute(sql`
-      WITH absence_calculations AS (
+      WITH working_days AS (
+        -- Calculate total working days from start of year to today (excluding weekends)
+        SELECT COUNT(*) as total_working_days
+        FROM generate_series(
+          DATE '${currentYear}-01-01', 
+          LEAST(CURRENT_DATE, DATE '${currentYear}-12-31'), 
+          '1 day'::interval
+        ) AS day
+        WHERE EXTRACT(DOW FROM day) NOT IN (0, 6) -- Exclude Saturday (6) and Sunday (0)
+      ),
+      employee_attendance AS (
         SELECT 
           e.id as employee_id,
           e.employee_id as emp_id,
@@ -3167,13 +3178,16 @@ router.get('/api/leave-balances/report', async (req, res) => {
           e.employee_group,
           e.status,
           e.join_date,
-          COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent_days,
-          45 as total_entitlement,
-          (45 - COUNT(CASE WHEN a.status = 'absent' THEN 1 END)) as remaining_days
+          -- Count days with attendance records (present days)
+          COUNT(DISTINCT DATE(a.date)) as present_days,
+          -- Calculate absent days from working days
+          (SELECT total_working_days FROM working_days) - COUNT(DISTINCT DATE(a.date)) as absent_days,
+          45 as total_entitlement
         FROM employees e
         JOIN departments d ON e.department_id = d.id
         LEFT JOIN attendance a ON e.id = a.employee_id 
-          AND EXTRACT(YEAR FROM a.date) = ${parseInt(year as string)}
+          AND EXTRACT(YEAR FROM a.date) = ${currentYear}
+          AND a.status = 'present'
         WHERE e.status = 'active'
         GROUP BY e.id, e.employee_id, e.full_name, d.name, e.employee_group, e.status, e.join_date
       )
@@ -3184,19 +3198,15 @@ router.get('/api/leave-balances/report', async (req, res) => {
         employee_group,
         status,
         total_entitlement,
-        absent_days as used_days,
-        remaining_days,
-        ROUND((absent_days * 100.0 / 45), 1) as utilization_percentage,
-        CASE 
-          WHEN remaining_days = 45 THEN 'Fully Available'
-          WHEN remaining_days >= 30 THEN 'High Available'
-          WHEN remaining_days >= 15 THEN 'Medium Available'
-          WHEN remaining_days > 0 THEN 'Low Available'
-          ELSE 'Exhausted'
-        END as eligibility_status,
+        -- For now, show 0 used days since we need to implement proper leave tracking
+        0 as used_days,
+        -- Show full entitlement available
+        total_entitlement as remaining_days,
+        0.0 as utilization_percentage,
+        'Fully Available' as eligibility_status,
         join_date
-      FROM absence_calculations
-      ORDER BY remaining_days DESC, full_name
+      FROM employee_attendance
+      ORDER BY full_name
     `);
     
     res.json(result.rows);

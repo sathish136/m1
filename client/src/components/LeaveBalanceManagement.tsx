@@ -10,16 +10,18 @@ export default function LeaveBalanceManagement() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   // Fetch leave balance report with automatic deduction calculations
-  const { data: leaveReport = [], isLoading: isReportLoading } = useQuery({
+  const { data: leaveReport = [], isLoading: isReportLoading, error: reportError } = useQuery({
     queryKey: ['/api/leave-balances/report', selectedYear],
     queryFn: () => apiRequest('GET', `/api/leave-balances/report?year=${selectedYear}`),
   });
 
   // Fetch leave balance statistics
-  const { data: leaveStats, isLoading: isStatsLoading } = useQuery({
+  const { data: leaveStats, isLoading: isStatsLoading, error: statsError } = useQuery({
     queryKey: ['/api/leave-balances/stats', selectedYear],
     queryFn: () => apiRequest('GET', `/api/leave-balances/stats?year=${selectedYear}`),
   });
+
+
 
   return (
     <div className="container mx-auto py-6">
