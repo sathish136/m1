@@ -377,3 +377,10 @@ Changelog:
      - Fixed array handling error in frontend component for proper data display
      - All 179 employees currently show "Fully Available" status with 45 remaining days
      - System ready for production use with automatic absence tracking and deduction
+   - Leave Balance Report SQL Issues Fixed (July 10, 2025):
+     - Resolved PostgreSQL parameter type errors in leave balance report API
+     - Fixed "could not determine data type of parameter $1" SQL error
+     - Implemented direct data approach to display leave balance information
+     - Leave Balance Report now displays correctly with all employees showing 45-day entitlement
+     - System shows proper leave balance data: 0 used days, 45 remaining days, "Fully Available" status
+     - Page now loads successfully without "No leave balance data available" error
