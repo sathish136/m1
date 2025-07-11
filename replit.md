@@ -350,6 +350,13 @@ Changelog:
     - Leave balance formula: 45 eligible days - absent days = remaining leave balance
     - All calculations exclude holidays and weekends from absence calculations
     - System displays real-time statistics for 179 employees with proper policy implementation
+  - Page Restructuring (July 11, 2025):
+    - Deleted existing Leave Balance Management page completely as requested
+    - Created new simplified "Leave" page with clean card-based layout
+    - Updated navigation menu from "Leave Balance" to "Leave" 
+    - New Leave page includes sections for Leave Requests, Leave Balance, and Leave Reports
+    - Removed automatic leave balance calculation functionality from frontend
+    - Updated routing from "/leave-balance" to "/leave" in App.tsx and Layout.tsx
   - Automatic Leave Balance System Implementation (July 11, 2025):
     - Implemented comprehensive automatic leave balance calculation system effective from January 1, 2025
     - Created LeaveBalanceService with policy-compliant calculations: 45 eligible days - absent days = leave balance
