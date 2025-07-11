@@ -146,71 +146,46 @@ export default function Leave() {
         </div>
       )}
 
-      {/* Policy Information */}
-      <Card className="bg-gradient-to-r from-slate-50 to-slate-100 border-slate-200">
-        <CardHeader>
-          <CardTitle className="text-slate-800">Leave Policy (Effective January 1, 2025)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <h4 className="font-semibold text-slate-700 mb-2">Entitlement</h4>
-              <ul className="space-y-1 text-slate-600">
-                <li>• All Group A & B employees: 45 days per year</li>
-                <li>• Calendar year basis (January - December)</li>
-                <li>• No manual intervention required</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-700 mb-2">Deduction Logic</h4>
-              <ul className="space-y-1 text-slate-600">
-                <li>• 1 day deducted per absent day</li>
-                <li>• Holidays and weekends excluded</li>
-                <li>• Daily automatic calculation</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* Employee Leave Balance Table */}
       {leaveBalances && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Individual Leave Balances</CardTitle>
+        <Card className="shadow-sm">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+            <CardTitle className="text-lg font-semibold text-gray-800">Individual Leave Balances</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full">
                 <thead>
-                  <tr className="border-b bg-slate-50">
-                    <th className="text-left p-3 font-medium">S.No</th>
-                    <th className="text-left p-3 font-medium">Employee ID</th>
-                    <th className="text-left p-3 font-medium">Name</th>
-                    <th className="text-left p-3 font-medium">Group</th>
-                    <th className="text-center p-3 font-medium">Eligible Leave</th>
-                    <th className="text-center p-3 font-medium">Leave Taken</th>
-                    <th className="text-center p-3 font-medium">Leave Balance</th>
-                    <th className="text-center p-3 font-medium">Usage %</th>
-                    <th className="text-center p-3 font-medium">Status</th>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">S.No</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Employee ID</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Name</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Group</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Eligible Leave</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Leave Taken</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Leave Balance</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Usage %</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leaveBalances.map((employee, index) => (
-                    <tr key={employee.employee_id} className={index % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                      <td className="p-3 text-center font-medium">{index + 1}</td>
-                      <td className="p-3 font-mono text-xs">{employee.employee_id}</td>
-                      <td className="p-3">{employee.full_name}</td>
-                      <td className="p-3">
-                        <Badge variant={employee.employee_group === 'group_a' ? 'default' : 'secondary'} className="text-xs">
+                    <tr key={employee.employee_id} className={`border-b hover:bg-gray-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                      <td className="py-3 px-4 text-center font-medium text-gray-700">{index + 1}</td>
+                      <td className="py-3 px-4 font-mono text-xs text-blue-600 font-medium">{employee.employee_id}</td>
+                      <td className="py-3 px-4 text-gray-900 font-medium">{employee.full_name}</td>
+                      <td className="py-3 px-4">
+                        <Badge variant={employee.employee_group === 'group_a' ? 'default' : 'secondary'} className="text-xs font-medium">
                           Group {employee.employee_group === 'group_a' ? 'A' : 'B'}
                         </Badge>
                       </td>
-                      <td className="p-3 text-center font-semibold text-green-700">45</td>
-                      <td className="p-3 text-center font-semibold text-orange-700">{employee.used_days}</td>
-                      <td className="p-3 text-center font-semibold text-purple-700">{employee.remaining_days}</td>
-                      <td className="p-3 text-center text-xs">{employee.utilization_percentage}%</td>
-                      <td className="p-3 text-center">
+                      <td className="py-3 px-4 text-center font-semibold text-green-600">45</td>
+                      <td className="py-3 px-4 text-center font-semibold text-orange-600">{employee.used_days}</td>
+                      <td className="py-3 px-4 text-center font-semibold text-purple-600">{employee.remaining_days}</td>
+                      <td className="py-3 px-4 text-center text-sm font-medium text-gray-600">{employee.utilization_percentage}%</td>
+                      <td className="py-3 px-4 text-center">
                         <Badge 
                           variant={
                             employee.usage_category === 'No Leave Taken' ? 'outline' :
@@ -218,7 +193,7 @@ export default function Leave() {
                             employee.usage_category === 'Moderate Usage' ? 'default' :
                             'destructive'
                           }
-                          className="text-xs"
+                          className="text-xs font-medium"
                         >
                           {employee.usage_category.replace(' Usage', '')}
                         </Badge>
@@ -227,9 +202,9 @@ export default function Leave() {
                   ))}
                 </tbody>
               </table>
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                Showing all {leaveBalances.length} employees
-              </div>
+            </div>
+            <div className="bg-gray-50 px-4 py-3 border-t text-center text-sm text-gray-600">
+              Showing all <span className="font-semibold">{leaveBalances.length}</span> employees
             </div>
           </CardContent>
         </Card>
