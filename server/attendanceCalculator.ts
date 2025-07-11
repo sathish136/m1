@@ -215,13 +215,13 @@ export class AttendanceCalculator {
     
     let offerHours = 0;
 
-    // Calculate offer hours based on category
+    // Calculate offer hours based on category - Weekend and Holiday work counts as full OT
     if (holidayInfo.isWeekend || holidayInfo.isHoliday) {
-      // On weekends and holidays, all working hours count as offer hours
+      // Saturday and Sunday: ALL working hours count as overtime
       const totalMs = checkOut.getTime() - checkIn.getTime();
       offerHours = totalMs / (1000 * 60 * 60);
     } else if (checkOut > overtimeStart) {
-      // Regular days: only hours after specified time count
+      // Regular weekdays: only hours after specified time count
       const overtimeMs = checkOut.getTime() - overtimeStart.getTime();
       offerHours = Math.max(0, overtimeMs / (1000 * 60 * 60));
     }
@@ -251,16 +251,39 @@ export class AttendanceCalculator {
    * Check if a date falls on a government holiday
    */
   async isGovernmentHoliday(date: Date): Promise<HolidayInfo> {
-    // This would integrate with your holidays table
-    // For now, returning basic weekend detection
     const dayOfWeek = date.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
     
-    return {
-      isHoliday: false, // You would check against holidays table
-      isWeekend: dayOfWeek === 0 || dayOfWeek === 6, // Sunday or Saturday
-      isMercantileHoliday: false, // Check against special holidays
-      isSpecialHoliday: false // Check against special holidays
-    };
+    // Check against holidays table
+    try {
+      const { db } = await import('./db.js');
+      const { holidays } = await import('../shared/schema.js');
+      const { eq, and } = await import('drizzle-orm');
+      
+      const year = date.getFullYear();
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const holiday = await db.select().from(holidays)
+        .where(and(
+          eq(holidays.year, year),
+          eq(holidays.date, new Date(dateStr))
+        ))
+        .limit(1);
+      
+      return {
+        isHoliday: holiday.length > 0,
+        isWeekend,
+        isMercantileHoliday: holiday.length > 0 && holiday[0].type === 'special',
+        isSpecialHoliday: holiday.length > 0 && holiday[0].type === 'special'
+      };
+    } catch (error) {
+      return {
+        isHoliday: false,
+        isWeekend,
+        isMercantileHoliday: false,
+        isSpecialHoliday: false
+      };
+    }
   }
 }
 

@@ -807,8 +807,18 @@ router.get("/api/overtime-eligible", async (req, res) => {
     const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
     const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
 
-    // Fetch HR policy for group time thresholds
-    const groupWorkingHours = await getGroupWorkingHours();
+    // Check if the date is weekend (Saturday or Sunday)
+    const dayOfWeek = targetDate.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday = 0, Saturday = 6
+
+    // Check if the date is a holiday
+    const holidayCheck = await db.select().from(holidays)
+      .where(and(
+        eq(holidays.date, startOfDay),
+        eq(holidays.year, targetDate.getFullYear())
+      ))
+      .limit(1);
+    const isHoliday = holidayCheck.length > 0;
 
     // Get all employees
     const allEmployees = await db.select({
@@ -826,48 +836,39 @@ router.get("/api/overtime-eligible", async (req, res) => {
         lt(attendance.date, endOfDay)
       ));
 
-    // Get existing overtime requests for the date
-    const existingRequests = await db.select()
-      .from(overtimeRequests)
-      .where(and(
-        gte(overtimeRequests.date, startOfDay),
-        lt(overtimeRequests.date, endOfDay)
-      ));
-
     const eligibleEmployees = allEmployees.map(emp => {
-      let requiredHours = 8;
-      if (emp.employeeGroup === 'group_a') {
-        // Check the more specific overtime policy setting first, then fallback to main setting
-        requiredHours = groupWorkingHours.groupA?.overtimePolicy?.normalDay?.minHoursForOT || 
-                       groupWorkingHours.groupA?.minHoursForOT || 
-                       8;
-      } else if (emp.employeeGroup === 'group_b') {
-        requiredHours = groupWorkingHours.groupB?.overtimePolicy?.normalDay?.minHoursForOT || 
-                       groupWorkingHours.groupB?.minHoursForOT || 
-                       8;
-      }
-
-      let actualHours = 0;
+      let otHours = 0;
       const empAttendance = attendanceRecords.find(a => a.employeeId === emp.id);
+      
       if (empAttendance && empAttendance.checkIn && empAttendance.checkOut) {
         const diffMs = new Date(empAttendance.checkOut).getTime() - new Date(empAttendance.checkIn).getTime();
-        actualHours = diffMs / (1000 * 60 * 60);
+        const actualHours = diffMs / (1000 * 60 * 60);
+        
+        if (isWeekend || isHoliday) {
+          // Weekend or Holiday: ALL working hours count as overtime
+          otHours = actualHours;
+        } else {
+          // Regular weekday: overtime after required hours
+          // Group A: 7.75 hours, Group B: 8.75 hours
+          const requiredHours = emp.employeeGroup === 'group_a' ? 7.75 : 8.75;
+          otHours = Math.max(0, actualHours - requiredHours);
+        }
       }
-
-      const otHours = Math.max(0, actualHours - requiredHours);
-      const hasExistingRequest = existingRequests.some(req => req.employeeId === emp.id);
 
       return {
         ...emp,
-        actualHours: actualHours.toFixed(2),
-        requiredHours: requiredHours.toFixed(2),
+        actualHours: empAttendance ? (new Date(empAttendance.checkOut).getTime() - new Date(empAttendance.checkIn).getTime()) / (1000 * 60 * 60) : 0,
         otHours: otHours.toFixed(2),
         date: startOfDay.toISOString().split('T')[0],
-        hasOvertimeHours: otHours > 0,
-        hasExistingRequest
+        checkIn: empAttendance?.checkIn,
+        checkOut: empAttendance?.checkOut,
+        isWeekend,
+        isHoliday,
+        otType: isWeekend ? 'Weekend' : isHoliday ? 'Holiday' : 'Regular',
+        hasOvertimeHours: otHours > 0
       };
     })
-    .filter(emp => emp.hasOvertimeHours && !emp.hasExistingRequest);
+    .filter(emp => emp.hasOvertimeHours);
 
     res.json(eligibleEmployees);
   } catch (error) {

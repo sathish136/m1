@@ -17,30 +17,16 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function OvertimeManagement() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("all");
-  const [rejectReason, setRejectReason] = useState("");
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
-  const [employeeToReject, setEmployeeToReject] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: eligibleEmployees = [], isLoading: isEligibleLoading } = useQuery({
+  const { data: overtimeEmployees = [], isLoading: isOvertimeLoading } = useQuery({
     queryKey: ["/api/overtime-eligible", selectedDate],
     queryFn: async () => {
       const response = await fetch(`/api/overtime-eligible?date=${selectedDate}`);
-      if (!response.ok) throw new Error("Failed to fetch eligible employees");
-      return response.json();
-    },
-  });
-
-  const { data: overtimeRequests = [], isLoading: isRequestsLoading } = useQuery({
-    queryKey: ["/api/overtime-requests"],
-    queryFn: async () => {
-      const response = await fetch("/api/overtime-requests");
-      if (!response.ok) throw new Error("Failed to fetch overtime requests");
+      if (!response.ok) throw new Error("Failed to fetch overtime employees");
       return response.json();
     },
   });
