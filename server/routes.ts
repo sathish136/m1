@@ -3307,18 +3307,32 @@ router.post('/api/leave-balances/auto-calculate', async (req, res) => {
 // Enhanced Leave Balance Summary with 2025+ Policy
 router.get('/api/leave-balances/summary', async (req, res) => {
   try {
-    const { year = new Date().getFullYear() } = req.query;
-    const results = await leaveBalanceService.getLeaveBalanceSummary(parseInt(year as string));
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
+    
+    if (year < 2025) {
+      return res.json({ summary: { totalEmployees: 0, totalEligibleDays: 0, totalAbsentDays: 0, totalRemainingDays: 0 } });
+    }
+
+    // Use raw SQL query to avoid ORM issues
+    const result = await db.execute(sql`
+      SELECT 
+        COUNT(*)::int as total_employees,
+        SUM(annual_entitlement)::int as total_eligible_days,
+        SUM(used_days)::int as total_absent_days,
+        SUM(remaining_days)::int as total_remaining_days
+      FROM leave_balances 
+      WHERE year = ${year}
+    `);
+
+    const stats = result[0];
     
     res.json({
-      year: parseInt(year as string),
       summary: {
-        totalEmployees: results.length,
-        totalEligibleDays: results.length * 45,
-        totalAbsentDays: results.reduce((sum, emp) => sum + emp.absentDays, 0),
-        totalRemainingDays: results.reduce((sum, emp) => sum + emp.leaveBalance, 0)
-      },
-      employees: results
+        totalEmployees: stats.total_employees || 0,
+        totalEligibleDays: stats.total_eligible_days || 0,
+        totalAbsentDays: stats.total_absent_days || 0,
+        totalRemainingDays: stats.total_remaining_days || 0
+      }
     });
   } catch (error) {
     console.error('Failed to fetch leave balance summary:', error);

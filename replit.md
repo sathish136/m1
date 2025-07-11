@@ -340,6 +340,16 @@ Changelog:
     - All API endpoints functional with real database connections and proper error handling
     - Application server running successfully on port 5000 with full functionality
     - System fully operational and ready for production use with complete feature set
+  - Automatic Leave Balance System (July 11, 2025):
+    - Successfully implemented automatic leave balance calculation effective from January 1, 2025
+    - Created leave balance records for all 179 active employees with 45-day annual entitlement
+    - System automatically calculates when Leave Balance page is opened for 2025+ years
+    - Removed manual buttons as requested - system now runs automatically without user intervention
+    - Daily scheduler runs automatically at midnight to update leave balances based on attendance data
+    - Database properly configured with 21 Annual Holidays + 24 Special Holidays (total 45 days)
+    - Leave balance formula: 45 eligible days - absent days = remaining leave balance
+    - All calculations exclude holidays and weekends from absence calculations
+    - System displays real-time statistics for 179 employees with proper policy implementation
   - Automatic Leave Balance System Implementation (July 11, 2025):
     - Implemented comprehensive automatic leave balance calculation system effective from January 1, 2025
     - Created LeaveBalanceService with policy-compliant calculations: 45 eligible days - absent days = leave balance

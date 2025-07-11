@@ -477,9 +477,7 @@ export class DatabaseStorage implements IStorage {
     const newBalance: InsertLeaveBalance = {
       employeeId,
       year,
-      totalDays: 45,
-      annualDays: 21,
-      specialDays: 24,
+      annualEntitlement: 45,
       usedDays: 0,
       remainingDays: 45
     };
