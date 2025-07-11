@@ -357,6 +357,15 @@ Changelog:
     - New Leave page includes sections for Leave Requests, Leave Balance, and Leave Reports
     - Removed automatic leave balance calculation functionality from frontend
     - Updated routing from "/leave-balance" to "/leave" in App.tsx and Layout.tsx
+  - Automatic Leave Deduction System Implementation (July 11, 2025):
+    - Created LeaveDeductionService to properly calculate absent days and deduct from 45-day entitlement
+    - Fixed leave balance calculation to use real attendance data instead of placeholder values
+    - System now automatically deducts 1 day from leave balance for each day marked as "absent"
+    - Implemented raw SQL queries to handle complex attendance-to-leave-balance calculations
+    - Leave deduction formula: 45 eligible days - total absent days = remaining leave balance
+    - System processes all attendance records from January 1, 2025 onwards
+    - Automatic updates ensure leave balances reflect actual attendance data
+    - Enhanced Leave page shows real deduction data with proper statistics
   - Automatic Leave Balance System Implementation (July 11, 2025):
     - Implemented comprehensive automatic leave balance calculation system effective from January 1, 2025
     - Created LeaveBalanceService with policy-compliant calculations: 45 eligible days - absent days = leave balance

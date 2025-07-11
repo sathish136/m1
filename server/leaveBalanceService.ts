@@ -39,22 +39,29 @@ export class LeaveBalanceService {
     // For now, since we may not have complete attendance data,
     // we'll initialize all employees with 45 days entitlement and 0 used days
     for (const employee of allEmployees) {
-      // All employees have 45 days eligible leave per year
-      const totalEligible = 45;
-      const absentDays = 0; // Start with 0, will be updated as attendance data comes in
-      const leaveBalance = totalEligible - absentDays;
+      try {
+        // Calculate real absent days from attendance data
+        const absentDays = await this.calculateRealAbsentDays(employee.id, year);
+        
+        // All employees have 45 days eligible leave per year
+        const totalEligible = 45;
+        const leaveBalance = Math.max(0, totalEligible - absentDays); // Don't go negative
 
-      // Update or create leave balance record
-      await this.updateEmployeeLeaveBalance(employee.id.toString(), year, totalEligible, absentDays, leaveBalance);
+        // Update or create leave balance record
+        await this.updateEmployeeLeaveBalance(employee.id.toString(), year, totalEligible, absentDays, leaveBalance);
 
-      results.push({
-        employeeId: employee.employeeId,
-        fullName: employee.fullName,
-        totalEligible,
-        absentDays,
-        leaveBalance,
-        year
-      });
+        results.push({
+          employeeId: employee.employeeId,
+          fullName: employee.fullName,
+          totalEligible,
+          absentDays,
+          leaveBalance,
+          year
+        });
+      } catch (error) {
+        console.error(`Error processing leave balance for employee ${employee.employeeId}:`, error);
+        // Continue with next employee
+      }
     }
 
     console.log(`Created/updated leave balances for ${results.length} employees`);

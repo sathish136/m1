@@ -38,6 +38,7 @@ import { attendanceCalculator } from './attendanceCalculator';
 import hrSettingsRouter from './hrSettings';
 import { storage } from './storage';
 import { leaveBalanceService } from './leaveBalanceService';
+import { leaveDeductionService } from './leaveDeductionService';
 
 const router = express.Router();
 
@@ -3289,18 +3290,20 @@ router.post('/api/leave-balances/auto-calculate', async (req, res) => {
       });
     }
 
-    console.log(`Starting automatic leave balance calculation for year ${year}`);
-    const results = await leaveBalanceService.calculateLeaveBalances(year);
+    console.log(`Processing leave deductions based on attendance data for year ${year}`);
+    const results = await leaveDeductionService.processLeaveDeductions(year);
     
     res.json({
       success: true,
-      message: `Leave balances calculated for ${results.length} employees`,
+      message: `Leave deductions processed for ${results.employeesProcessed} employees`,
       year,
-      data: results
+      employeesProcessed: results.employeesProcessed,
+      totalLeaveDeducted: results.totalLeaveDeducted,
+      summary: results.summary
     });
   } catch (error) {
-    console.error('Failed to calculate leave balances automatically:', error);
-    res.status(500).json({ message: 'Failed to calculate leave balances automatically' });
+    console.error('Failed to process leave deductions:', error);
+    res.status(500).json({ message: 'Failed to process leave deductions automatically' });
   }
 });
 
@@ -3308,22 +3311,8 @@ router.post('/api/leave-balances/auto-calculate', async (req, res) => {
 router.get('/api/leave-balances/summary', async (req, res) => {
   try {
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
-    
-    if (year < 2025) {
-      return res.json({ summary: { totalEmployees: 0, totalEligibleDays: 0, totalAbsentDays: 0, totalRemainingDays: 0 } });
-    }
-
-    // Get all leave balance records and calculate summary
-    const allBalances = await db.select().from(leaveBalances).where(eq(leaveBalances.year, year));
-    
-    const summary = {
-      totalEmployees: allBalances.length,
-      totalEligibleDays: allBalances.reduce((sum, record) => sum + record.annualEntitlement, 0),
-      totalAbsentDays: allBalances.reduce((sum, record) => sum + record.usedDays, 0),
-      totalRemainingDays: allBalances.reduce((sum, record) => sum + record.remainingDays, 0)
-    };
-    
-    res.json({ summary });
+    const summary = await leaveDeductionService.getLeaveBalanceSummary(year);
+    res.json(summary);
   } catch (error) {
     console.error('Failed to fetch leave balance summary:', error);
     res.status(500).json({ message: 'Failed to fetch leave balance summary' });
