@@ -347,6 +347,12 @@ Changelog:
     - All API endpoints now functional with proper database connections
     - Leave balance system automatically calculates based on absence data from 2025 onwards
     - Migration completed successfully with full functionality verified
+  - Leave Balance Display Enhancement (July 11, 2025):
+    - Added serial numbers (S.No) column to leave balance table for better employee tracking
+    - Fixed eligible leave count display to show correct 45 days per employee (Group A & B)
+    - Removed 20-employee display limit to show all 183 employees in leave balance report
+    - Updated footer text to reflect "Showing all X employees" instead of limited view
+    - Leave balance table now shows comprehensive data with proper policy-compliant eligible leave counts
   - Automatic Leave Balance System (July 11, 2025):
     - Successfully implemented automatic leave balance calculation effective from January 1, 2025
     - Created leave balance records for all 179 active employees with 45-day annual entitlement

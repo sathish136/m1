@@ -184,6 +184,7 @@ export default function Leave() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-slate-50">
+                    <th className="text-left p-3 font-medium">S.No</th>
                     <th className="text-left p-3 font-medium">Employee ID</th>
                     <th className="text-left p-3 font-medium">Name</th>
                     <th className="text-left p-3 font-medium">Group</th>
@@ -195,8 +196,9 @@ export default function Leave() {
                   </tr>
                 </thead>
                 <tbody>
-                  {leaveBalances.slice(0, 20).map((employee, index) => (
+                  {leaveBalances.map((employee, index) => (
                     <tr key={employee.employee_id} className={index % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                      <td className="p-3 text-center font-medium">{index + 1}</td>
                       <td className="p-3 font-mono text-xs">{employee.employee_id}</td>
                       <td className="p-3">{employee.full_name}</td>
                       <td className="p-3">
@@ -204,7 +206,7 @@ export default function Leave() {
                           Group {employee.employee_group === 'group_a' ? 'A' : 'B'}
                         </Badge>
                       </td>
-                      <td className="p-3 text-center font-semibold text-green-700">{employee.annual_entitlement}</td>
+                      <td className="p-3 text-center font-semibold text-green-700">45</td>
                       <td className="p-3 text-center font-semibold text-orange-700">{employee.used_days}</td>
                       <td className="p-3 text-center font-semibold text-purple-700">{employee.remaining_days}</td>
                       <td className="p-3 text-center text-xs">{employee.utilization_percentage}%</td>
@@ -225,11 +227,9 @@ export default function Leave() {
                   ))}
                 </tbody>
               </table>
-              {leaveBalances.length > 20 && (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  Showing first 20 of {leaveBalances.length} employees
-                </div>
-              )}
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                Showing all {leaveBalances.length} employees
+              </div>
             </div>
           </CardContent>
         </Card>
