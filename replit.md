@@ -400,6 +400,22 @@ Changelog:
     - All calculations run autonomously based on attendance data with no manual button presses required
     - Leave balance display shows Total Eligible Leave (45), Leave Taken (absent days), and Leave Balance (remaining)
     - Complete automation ensures accurate leave tracking for all Group A and Group B employees
+  - Overtime Management Simplification (July 11, 2025):
+    - Removed overtime approval workflow system - overtime now calculated and displayed directly
+    - Updated overtime calculation to include weekend and holiday work as full overtime hours
+    - Saturday and Sunday working hours automatically count as 100% overtime
+    - Holiday working hours automatically count as 100% overtime
+    - Created new simplified OvertimeDisplay component replacing complex approval workflow
+    - Updated all reports to remove "OT Approval Status" columns and references
+    - Enhanced Daily OT Report to show overtime hours directly with weekend/holiday indicators
+    - Created new Monthly OT Report with breakdown of regular, weekend, and holiday overtime
+    - Updated Monthly Attendance Report to include overtime hours without approval status
+    - Added new API endpoint /api/overtime-eligible for fetching employees with overtime hours
+    - Created new API endpoint /api/reports/monthly-ot for comprehensive monthly overtime reporting
+    - System now automatically calculates overtime based on attendance data without manual approval process
+    - Weekend overtime policy: All working hours on Saturday/Sunday count as overtime
+    - Holiday overtime policy: All working hours on holidays count as overtime
+    - Weekday overtime policy: Hours beyond required daily hours (7.75h for Group A, 8.75h for Group B) count as overtime
   - Project Migration to Replit Environment Completed (July 10, 2025):
     - Successfully migrated HR Attendance Management System from Replit Agent to standard Replit environment
     - Established PostgreSQL database connection with user-provided DATABASE_URL
