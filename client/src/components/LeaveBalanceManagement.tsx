@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays, FileText, Users, Clock, TrendingUp, BarChart3, AlertCircle, Download, Edit, Plus } from "lucide-react";
+import { CalendarDays, FileText, Users, Clock, TrendingUp, BarChart3, AlertCircle, Download, Edit, Plus, Calculator, RefreshCw, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -100,6 +100,13 @@ export default function LeaveBalanceManagement() {
     queryFn: () => apiRequest('GET', `/api/leave-balances/report?year=${selectedYear}`),
   });
 
+  // Fetch automatic leave balance summary (2025+ Policy)
+  const { data: autoBalanceSummary, isLoading: isAutoSummaryLoading } = useQuery({
+    queryKey: ['/api/leave-balances/summary', selectedYear],
+    queryFn: () => apiRequest('GET', `/api/leave-balances/summary?year=${selectedYear}`),
+    enabled: selectedYear >= 2025, // Only fetch for 2025 and later
+  });
+
   // Fetch detailed leave balance calculation
   const { data: leaveCalculation, isLoading: isCalculationLoading } = useQuery({
     queryKey: ['/api/leave-balances/calculate', selectedEmployeeId, selectedYear],
@@ -143,12 +150,59 @@ export default function LeaveBalanceManagement() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/leave-balances'] });
       queryClient.invalidateQueries({ queryKey: ['/api/leave-balances/report'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances/summary'] });
       setEditingBalance(null);
     },
     onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update leave balance",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Automatic leave balance calculation mutation (2025+ Policy)
+  const autoCalculateMutation = useMutation({
+    mutationFn: async (year: number) => {
+      return apiRequest('POST', '/api/leave-balances/auto-calculate', { year });
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Success",
+        description: `Leave balances calculated for ${data.data.length} employees automatically`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances/report'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances/summary'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to calculate leave balances automatically",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Manual daily update trigger
+  const dailyUpdateMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/leave-balances/daily-update', {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Daily leave balance update completed successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances/report'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances/summary'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to run daily update",
         variant: "destructive",
       });
     },
@@ -210,19 +264,50 @@ export default function LeaveBalanceManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Leave Balance Management</h1>
-          <p className="text-gray-600">Manage 45-day annual leave entitlements for all employees</p>
+          <p className="text-gray-600">
+            {selectedYear >= 2025 
+              ? "Automatic leave balance calculation based on attendance (45 days eligible - absent days)"
+              : "Manage 45-day annual leave entitlements for all employees"
+            }
+          </p>
         </div>
         <div className="flex items-center space-x-4">
           <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-            <SelectTrigger className="w-24">
+            <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {Array.from({ length: 11 }, (_, i) => 2020 + i).map(year => (
-                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                <SelectItem key={year} value={year.toString()}>
+                  {year} {year >= 2025 && <span className="text-xs text-green-600 ml-1">Auto</span>}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          
+          {/* 2025+ Policy Automatic Controls */}
+          {selectedYear >= 2025 && (
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => autoCalculateMutation.mutate(selectedYear)}
+                disabled={autoCalculateMutation.isPending}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              >
+                <Calculator className="mr-2 h-4 w-4" />
+                {autoCalculateMutation.isPending ? "Calculating..." : "Auto Calculate"}
+              </Button>
+              
+              <Button
+                onClick={() => dailyUpdateMutation.mutate()}
+                disabled={dailyUpdateMutation.isPending}
+                variant="outline"
+                className="border-orange-200 text-orange-700 hover:bg-orange-50"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {dailyUpdateMutation.isPending ? "Updating..." : "Daily Update"}
+              </Button>
+            </div>
+          )}
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
@@ -306,7 +391,42 @@ export default function LeaveBalanceManagement() {
         </div>
       </div>
 
-      {/* Summary Statistics */}
+      {/* 2025+ Policy Summary Statistics */}
+      {selectedYear >= 2025 && autoBalanceSummary && (
+        <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200 mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-emerald-800">
+              <Zap className="h-5 w-5" />
+              Automatic Leave Balance Summary - {selectedYear}
+            </CardTitle>
+            <CardDescription className="text-emerald-700">
+              Policy effective from January 1, 2025: 45 eligible days - absent days = leave balance
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-emerald-800">{autoBalanceSummary.summary.totalEmployees}</div>
+                <div className="text-sm text-emerald-600">Total Employees</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-emerald-800">{autoBalanceSummary.summary.totalEligibleDays}</div>
+                <div className="text-sm text-emerald-600">Total Eligible Days</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-red-600">{autoBalanceSummary.summary.totalAbsentDays}</div>
+                <div className="text-sm text-red-500">Total Absent Days</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600">{autoBalanceSummary.summary.totalRemainingDays}</div>
+                <div className="text-sm text-green-500">Total Leave Balance</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Traditional Summary Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardContent className="flex items-center p-6">

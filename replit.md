@@ -340,6 +340,17 @@ Changelog:
     - All API endpoints functional with real database connections and proper error handling
     - Application server running successfully on port 5000 with full functionality
     - System fully operational and ready for production use with complete feature set
+  - Automatic Leave Balance System Implementation (July 11, 2025):
+    - Implemented comprehensive automatic leave balance calculation system effective from January 1, 2025
+    - Created LeaveBalanceService with policy-compliant calculations: 45 eligible days - absent days = leave balance
+    - Added automatic daily scheduler that updates leave balances at midnight without manual intervention
+    - Enhanced Leave Balance Management page with 2025+ policy features including automatic calculation buttons
+    - Added API endpoints for auto-calculate, daily updates, and enhanced leave balance summaries
+    - System automatically excludes holidays and weekends from absence calculations using the 45-holiday database
+    - Integrated real-time dashboard showing total employees, eligible days, absent days, and remaining balances
+    - All calculations run autonomously based on attendance data with no manual button presses required
+    - Leave balance display shows Total Eligible Leave (45), Leave Taken (absent days), and Leave Balance (remaining)
+    - Complete automation ensures accurate leave tracking for all Group A and Group B employees
   - Project Migration to Replit Environment Completed (July 10, 2025):
     - Successfully migrated HR Attendance Management System from Replit Agent to standard Replit environment
     - Established PostgreSQL database connection with user-provided DATABASE_URL

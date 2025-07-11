@@ -37,6 +37,7 @@ import { getGroupWorkingHours, updateGroupWorkingHours } from './hrSettings';
 import { attendanceCalculator } from './attendanceCalculator';
 import hrSettingsRouter from './hrSettings';
 import { storage } from './storage';
+import { leaveBalanceService } from './leaveBalanceService';
 
 const router = express.Router();
 
@@ -3275,6 +3276,72 @@ router.get('/api/leave-balances/calculate/:employeeId/:year', async (req, res) =
 });
 
 // Additional Leave Balance API Endpoints using storage layer (kept for compatibility)
+
+// New Automatic Leave Balance Calculation API (2025+ Policy Implementation)
+router.post('/api/leave-balances/auto-calculate', async (req, res) => {
+  try {
+    const { year = new Date().getFullYear() } = req.body;
+    
+    // Apply automatic calculation only from 2025 onwards
+    if (year < 2025) {
+      return res.status(400).json({ 
+        message: 'Automatic leave balance calculation applies from 2025 onwards' 
+      });
+    }
+
+    console.log(`Starting automatic leave balance calculation for year ${year}`);
+    const results = await leaveBalanceService.calculateLeaveBalances(year);
+    
+    res.json({
+      success: true,
+      message: `Leave balances calculated for ${results.length} employees`,
+      year,
+      data: results
+    });
+  } catch (error) {
+    console.error('Failed to calculate leave balances automatically:', error);
+    res.status(500).json({ message: 'Failed to calculate leave balances automatically' });
+  }
+});
+
+// Enhanced Leave Balance Summary with 2025+ Policy
+router.get('/api/leave-balances/summary', async (req, res) => {
+  try {
+    const { year = new Date().getFullYear() } = req.query;
+    const results = await leaveBalanceService.getLeaveBalanceSummary(parseInt(year as string));
+    
+    res.json({
+      year: parseInt(year as string),
+      summary: {
+        totalEmployees: results.length,
+        totalEligibleDays: results.length * 45,
+        totalAbsentDays: results.reduce((sum, emp) => sum + emp.absentDays, 0),
+        totalRemainingDays: results.reduce((sum, emp) => sum + emp.leaveBalance, 0)
+      },
+      employees: results
+    });
+  } catch (error) {
+    console.error('Failed to fetch leave balance summary:', error);
+    res.status(500).json({ message: 'Failed to fetch leave balance summary' });
+  }
+});
+
+// Daily automatic update endpoint (to be called by scheduler)
+router.post('/api/leave-balances/daily-update', async (req, res) => {
+  try {
+    console.log('Running daily leave balance update...');
+    await leaveBalanceService.runDailyLeaveBalanceUpdate();
+    
+    res.json({
+      success: true,
+      message: 'Daily leave balance update completed successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Failed to run daily leave balance update:', error);
+    res.status(500).json({ message: 'Failed to run daily leave balance update' });
+  }
+});
 
 router.get('/api/leave-balances/:employeeId/:year', async (req, res) => {
   try {

@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { scheduler } from "./scheduler";
 
 const isElectron = process.env.IS_ELECTRON === 'true';
 let db: any;
@@ -79,5 +80,13 @@ app.use((req, res, next) => {
     reusePort: false,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start automatic leave balance scheduler
+    try {
+      scheduler.start();
+      log('Automatic leave balance scheduler started successfully');
+    } catch (error) {
+      log(`Failed to start scheduler: ${error}`);
+    }
   });
 })();
