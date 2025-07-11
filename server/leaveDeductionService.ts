@@ -16,54 +16,61 @@ export class LeaveDeductionService {
     }
 
     try {
-      // Use raw SQL to calculate absent days and update leave balances
-      const result = await db.execute(sql`
-        WITH absent_counts AS (
-          SELECT 
-            a.employee_id,
-            COUNT(*) as total_absent_days
-          FROM attendance a
-          WHERE a.status = 'absent' 
-            AND a.date >= ${year + '-01-01'}
-            AND a.date <= ${year + '-12-31'}
-          GROUP BY a.employee_id
-        ),
-        updated_balances AS (
-          UPDATE leave_balances lb
-          SET 
-            used_days = COALESCE(ac.total_absent_days, 0),
-            remaining_days = GREATEST(0, 45 - COALESCE(ac.total_absent_days, 0)),
-            updated_at = CURRENT_TIMESTAMP
-          FROM absent_counts ac
-          WHERE lb.employee_id = ac.employee_id
-            AND lb.year = ${year}
-          RETURNING lb.employee_id, lb.used_days, lb.remaining_days
-        )
+      // First ensure all active employees have leave balance records
+      await db.execute(sql`
+        INSERT INTO leave_balances (employee_id, year, total_eligible, used_days, remaining_days, created_at, updated_at)
         SELECT 
-          COUNT(*) as employees_processed,
-          SUM(used_days) as total_leave_deducted,
-          SUM(remaining_days) as total_remaining_days
-        FROM updated_balances
+          e.id,
+          ${year},
+          45,
+          0,
+          45,
+          CURRENT_TIMESTAMP,
+          CURRENT_TIMESTAMP
+        FROM employees e
+        WHERE e.status = 'active'
+          AND e.id NOT IN (
+            SELECT lb.employee_id 
+            FROM leave_balances lb 
+            WHERE lb.year = ${year}
+          )
+        ON CONFLICT (employee_id, year) DO NOTHING
       `);
 
-      const stats = result.rows?.[0] || result[0] || {};
-
-      // Also update employees with no attendance (set to 0 used days, 45 remaining)
-      await db.execute(sql`
-        UPDATE leave_balances 
+      // Calculate comprehensive leave balance using a simpler direct approach
+      const result = await db.execute(sql`
+        UPDATE leave_balances
         SET 
-          used_days = 0,
-          remaining_days = 45,
+          used_days = (
+            SELECT 
+              GREATEST(0, 117 - COALESCE(present_count, 0)) as calculated_absent_days
+            FROM (
+              SELECT 
+                COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present_count
+              FROM attendance a
+              WHERE a.employee_id = leave_balances.employee_id
+                AND a.date >= '2025-01-01'
+                AND a.date <= CURRENT_DATE
+            ) attendance_summary
+          ),
+          remaining_days = (
+            SELECT 
+              GREATEST(0, 45 - GREATEST(0, 117 - COALESCE(present_count, 0))) as calculated_remaining
+            FROM (
+              SELECT 
+                COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present_count
+              FROM attendance a
+              WHERE a.employee_id = leave_balances.employee_id
+                AND a.date >= '2025-01-01'
+                AND a.date <= CURRENT_DATE
+            ) attendance_summary
+          ),
           updated_at = CURRENT_TIMESTAMP
         WHERE year = ${year}
-          AND employee_id NOT IN (
-            SELECT DISTINCT employee_id 
-            FROM attendance 
-            WHERE status = 'absent' 
-              AND date >= ${year + '-01-01'}
-              AND date <= ${year + '-12-31'}
-          )
+        RETURNING employee_id, used_days, remaining_days
       `);
+
+      const updatedRows = result.rows || result || [];
 
       // Get final summary statistics
       const summaryResult = await db.execute(sql`
@@ -78,8 +85,8 @@ export class LeaveDeductionService {
       const summary = summaryResult.rows?.[0] || summaryResult[0] || {};
 
       return {
-        employeesProcessed: parseInt(stats.employees_processed) || 0,
-        totalLeaveDeducted: parseInt(stats.total_leave_deducted) || 0,
+        employeesProcessed: updatedRows.length || 0,
+        totalLeaveDeducted: parseInt(summary.total_absent_days) || 0,
         summary: {
           totalEmployees: parseInt(summary.total_employees) || 0,
           totalAbsentDays: parseInt(summary.total_absent_days) || 0,
