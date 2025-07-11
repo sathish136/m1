@@ -1650,17 +1650,18 @@ router.get("/api/reports/daily-ot", async (req, res) => {
         lt(attendance.checkIn, endOfDay)
       ));
 
-    // Fetch overtime requests for the specific date
-    let otRecords: any[] = [];
-    try {
-      otRecords = await db.select().from(overtimeRequests)
-        .where(
-          sql`DATE(${overtimeRequests.date}) = ${date.toISOString().split('T')[0]}`
-        );
-    } catch (error) {
-      console.error("Error fetching overtime records:", error);
-      otRecords = [];
-    }
+    // Check if the date is weekend or holiday
+    const dayOfWeek = date.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday = 0, Saturday = 6
+
+    // Check if the date is a holiday
+    const holidayCheck = await db.select().from(holidays)
+      .where(and(
+        eq(holidays.date, startOfDay),
+        eq(holidays.year, date.getFullYear())
+      ))
+      .limit(1);
+    const isHoliday = holidayCheck.length > 0;
 
     const reportData = allEmployees.map(emp => {
       let requiredHours = 8; // Default required hours
@@ -1668,14 +1669,9 @@ router.get("/api/reports/daily-ot", async (req, res) => {
       console.log(`Processing record for employee: ${emp.employeeId}, group: ${emp.employeeGroup}`);
 
       if (emp.employeeGroup === 'group_a') {
-        // Check the more specific overtime policy setting first, then fallback to main setting
-        requiredHours = groupWorkingHours.groupA?.overtimePolicy?.normalDay?.minHoursForOT || 
-                       groupWorkingHours.groupA?.minHoursForOT || 
-                       8;
+        requiredHours = 7.75; // Group A: 7.75 hours
       } else if (emp.employeeGroup === 'group_b') {
-        requiredHours = groupWorkingHours.groupB?.overtimePolicy?.normalDay?.minHoursForOT || 
-                       groupWorkingHours.groupB?.minHoursForOT || 
-                       8;
+        requiredHours = 8.75; // Group B: 8.75 hours
       }
 
       console.log(`Calculated requiredHours: ${requiredHours}`);
