@@ -1,7 +1,5 @@
 import { db } from './db';
-import { storage } from './storage';
-import { employees, attendance, holidays, leaveBalances } from '../shared/schema';
-import { eq, and, gte, lte, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 export interface LeaveBalanceCalculation {
   employeeId: string;
@@ -23,49 +21,80 @@ export class LeaveBalanceService {
       throw new Error('Leave balance calculation applies from 2025 onwards');
     }
 
-    // Get all active employees
-    const allEmployees = await db.select({
-      id: employees.id,
-      employeeId: employees.employeeId,
-      fullName: employees.fullName,
-      employeeGroup: employees.employeeGroup,
-      status: employees.status
-    }).from(employees).where(eq(employees.status, 'active'));
+    try {
+      // Get all active employees using raw SQL to match the database structure
+      const allEmployees = await db.execute(sql`
+        SELECT id, employee_id, full_name, employee_group, status 
+        FROM employees 
+        WHERE status = 'active'
+      `);
 
-    console.log(`Found ${allEmployees.length} active employees for leave balance calculation`);
+      console.log(`Found ${allEmployees.length} active employees for leave balance calculation`);
 
-    const results: LeaveBalanceCalculation[] = [];
+      const results: LeaveBalanceCalculation[] = [];
 
-    // For now, since we may not have complete attendance data,
-    // we'll initialize all employees with 45 days entitlement and 0 used days
-    for (const employee of allEmployees) {
-      try {
-        // Calculate real absent days from attendance data
-        const absentDays = await this.calculateRealAbsentDays(employee.id, year);
-        
-        // All employees have 45 days eligible leave per year
-        const totalEligible = 45;
-        const leaveBalance = Math.max(0, totalEligible - absentDays); // Don't go negative
+      // Process each employee
+      for (const employee of allEmployees) {
+        try {
+          // Calculate real absent days from attendance data
+          const absentDays = await this.calculateRealAbsentDays(employee.id, year);
+          
+          // All employees have 45 days eligible leave per year
+          const totalEligible = 45;
+          const leaveBalance = Math.max(0, totalEligible - absentDays); // Don't go negative
 
-        // Update or create leave balance record
-        await this.updateEmployeeLeaveBalance(employee.id.toString(), year, totalEligible, absentDays, leaveBalance);
+          // Update or create leave balance record
+          await this.updateEmployeeLeaveBalance(employee.id, year, totalEligible, absentDays, leaveBalance);
 
-        results.push({
-          employeeId: employee.employeeId,
-          fullName: employee.fullName,
-          totalEligible,
-          absentDays,
-          leaveBalance,
-          year
-        });
-      } catch (error) {
-        console.error(`Error processing leave balance for employee ${employee.employeeId}:`, error);
-        // Continue with next employee
+          results.push({
+            employeeId: employee.employee_id,
+            fullName: employee.full_name,
+            totalEligible,
+            absentDays,
+            leaveBalance,
+            year
+          });
+        } catch (error) {
+          console.error(`Error processing leave balance for employee ${employee.employee_id}:`, error);
+          // Continue with next employee
+        }
       }
-    }
 
-    console.log(`Created/updated leave balances for ${results.length} employees`);
-    return results;
+      console.log(`Created/updated leave balances for ${results.length} employees`);
+      return results;
+    } catch (error) {
+      console.error('Error calculating leave balances:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate real absent days for an employee in a given year
+   * Excludes holidays and weekends from the calculation
+   */
+  private async calculateRealAbsentDays(employeeId: string, year: number): Promise<number> {
+    try {
+      // Get all absent days for this employee in this year, excluding holidays and weekends
+      const result = await db.execute(sql`
+        SELECT COUNT(*) as absent_count
+        FROM attendance a
+        WHERE a.employee_id = ${employeeId}
+          AND a.status = 'absent'
+          AND EXTRACT(YEAR FROM a.date) = ${year}
+          AND EXTRACT(DOW FROM a.date) NOT IN (0, 6)  -- Exclude weekends (Sunday=0, Saturday=6)
+          AND NOT EXISTS (
+            SELECT 1 FROM holidays h 
+            WHERE h.date::date = a.date::date 
+              AND h.year = ${year}
+              AND h.is_active = true
+          )
+      `);
+
+      return parseInt(result[0]?.absent_count || 0);
+    } catch (error) {
+      console.error(`Error calculating absent days for employee ${employeeId}:`, error);
+      return 0;
+    }
   }
 
   /**

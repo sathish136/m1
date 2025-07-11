@@ -104,7 +104,7 @@ export class LeaveDeductionService {
       const result = await db.execute(sql`
         SELECT 
           COUNT(*) as total_employees,
-          SUM(annual_entitlement) as total_eligible_days,
+          SUM(total_eligible) as total_eligible_days,
           SUM(used_days) as total_absent_days,
           SUM(remaining_days) as total_remaining_days
         FROM leave_balances 

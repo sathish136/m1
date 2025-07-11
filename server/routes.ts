@@ -3137,9 +3137,9 @@ router.put('/api/leave-balances/:employeeId/:year', async (req, res) => {
       UPDATE leave_balances 
       SET 
         used_days = ${usedDays},
-        remaining_days = annual_entitlement - ${usedDays},
+        remaining_days = total_eligible - ${usedDays},
         updated_at = now()
-      WHERE employee_id = ${parseInt(employeeId as string)} AND year = ${parseInt(year as string)}
+      WHERE employee_id = ${employeeId} AND year = ${parseInt(year as string)}
       RETURNING *
     `);
     
@@ -3164,7 +3164,7 @@ router.get('/api/leave-balances/report', async (req, res) => {
         e.full_name,
         d.name as department,
         e.employee_group,
-        COALESCE(lb.annual_entitlement, 45) as annual_entitlement,
+        COALESCE(lb.total_eligible, 45) as total_eligible,
         COALESCE(lb.used_days, 0) as used_days,
         COALESCE(lb.remaining_days, 45 - COALESCE(lb.used_days, 0)) as remaining_days,
         ROUND((COALESCE(lb.used_days, 0) * 100.0 / 45), 2) as utilization_percentage,
