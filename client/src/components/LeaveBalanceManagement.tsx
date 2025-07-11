@@ -100,11 +100,19 @@ export default function LeaveBalanceManagement() {
     queryFn: () => apiRequest('GET', `/api/leave-balances/report?year=${selectedYear}`),
   });
 
-  // Fetch automatic leave balance summary (2025+ Policy)
+  // Automatically calculate leave balances when page loads (2025+ Policy)
   const { data: autoBalanceSummary, isLoading: isAutoSummaryLoading } = useQuery({
-    queryKey: ['/api/leave-balances/summary', selectedYear],
-    queryFn: () => apiRequest('GET', `/api/leave-balances/summary?year=${selectedYear}`),
-    enabled: selectedYear >= 2025, // Only fetch for 2025 and later
+    queryKey: ['/api/leave-balances/auto-calculate', selectedYear],
+    queryFn: async () => {
+      if (selectedYear >= 2025) {
+        // First trigger automatic calculation
+        await apiRequest('POST', '/api/leave-balances/auto-calculate', { year: selectedYear });
+        // Then get the summary
+        return apiRequest('GET', `/api/leave-balances/summary?year=${selectedYear}`);
+      }
+      return null;
+    },
+    enabled: selectedYear >= 2025, // Only run for 2025 and later
   });
 
   // Fetch detailed leave balance calculation
@@ -162,51 +170,7 @@ export default function LeaveBalanceManagement() {
     },
   });
 
-  // Automatic leave balance calculation mutation (2025+ Policy)
-  const autoCalculateMutation = useMutation({
-    mutationFn: async (year: number) => {
-      return apiRequest('POST', '/api/leave-balances/auto-calculate', { year });
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Success",
-        description: `Leave balances calculated for ${data.data.length} employees automatically`,
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances/report'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances/summary'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to calculate leave balances automatically",
-        variant: "destructive",
-      });
-    },
-  });
 
-  // Manual daily update trigger
-  const dailyUpdateMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('POST', '/api/leave-balances/daily-update', {});
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Daily leave balance update completed successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances/report'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/leave-balances/summary'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to run daily update",
-        variant: "destructive",
-      });
-    },
-  });
 
   const form = useForm<LeaveBalanceForm>({
     resolver: zodResolver(leaveBalanceSchema),
@@ -285,36 +249,15 @@ export default function LeaveBalanceManagement() {
             </SelectContent>
           </Select>
           
-          {/* 2025+ Policy Automatic Controls */}
-          {selectedYear >= 2025 && (
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={() => autoCalculateMutation.mutate(selectedYear)}
-                disabled={autoCalculateMutation.isPending}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-              >
-                <Calculator className="mr-2 h-4 w-4" />
-                {autoCalculateMutation.isPending ? "Calculating..." : "Auto Calculate"}
-              </Button>
-              
-              <Button
-                onClick={() => dailyUpdateMutation.mutate()}
-                disabled={dailyUpdateMutation.isPending}
-                variant="outline"
-                className="border-orange-200 text-orange-700 hover:bg-orange-50"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                {dailyUpdateMutation.isPending ? "Updating..." : "Daily Update"}
-              </Button>
-            </div>
-          )}
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Leave Balance
-              </Button>
-            </DialogTrigger>
+
+          {selectedYear < 2025 && (
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Leave Balance
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Add Leave Balance</DialogTitle>
@@ -388,6 +331,7 @@ export default function LeaveBalanceManagement() {
               </Form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </div>
 

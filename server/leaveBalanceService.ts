@@ -186,7 +186,7 @@ export class LeaveBalanceService {
     const result = await db.select({
       employeeId: employees.employeeId,
       fullName: employees.fullName,
-      totalDays: leaveBalances.totalDays,
+      annualEntitlement: leaveBalances.annualEntitlement,
       usedDays: leaveBalances.usedDays,
       remainingDays: leaveBalances.remainingDays,
       year: leaveBalances.year
@@ -200,7 +200,7 @@ export class LeaveBalanceService {
     return result.map(row => ({
       employeeId: row.employeeId,
       fullName: row.fullName,
-      totalEligible: row.totalDays || 45,
+      totalEligible: row.annualEntitlement || 45,
       absentDays: row.usedDays || 0,
       leaveBalance: row.remainingDays || 45,
       year: row.year || year

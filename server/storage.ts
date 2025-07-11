@@ -459,7 +459,7 @@ export class DatabaseStorage implements IStorage {
     
     // Deduct the leave days
     const newUsedDays = balance.usedDays + daysToDeduct;
-    const newRemainingDays = balance.totalDays - newUsedDays;
+    const newRemainingDays = balance.annualEntitlement - newUsedDays;
     
     const result = await db.update(leaveBalances)
       .set({
