@@ -2259,31 +2259,31 @@ export default function Reports() {
             <div className="overflow-x-auto">
               <table className="min-w-full text-xs border-collapse">
                 <thead>
-                  <tr className="bg-gradient-to-r from-gray-100 to-gray-200 border-b-2 border-gray-300">
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 border-r border-gray-200">S.No</th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 border-r border-gray-200">Employee ID</th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 border-r border-gray-200">Full Name</th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 border-r border-gray-200">Department</th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 border-r border-gray-200">Group</th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 border-r border-gray-200">Entitlement</th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 border-r border-gray-200">Used Days</th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700 border-r border-gray-200">Remaining</th>
-                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Utilization</th>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 text-xs">S.No</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 text-xs">Employee ID</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 text-xs">Full Name</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 text-xs">Department</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 text-xs">Group</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700 text-xs">Entitlement</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700 text-xs">Used Days</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700 text-xs">Remaining</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700 text-xs">Utilization</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {reportData.map((balance: any, index: number) => (
                     <tr 
                       key={index} 
-                      className={`hover:bg-gray-50 transition-colors duration-150 ${
-                        balance.employee_group === 'group_a' ? 'bg-blue-25' : 'bg-purple-25'
+                      className={`hover:bg-gray-50 transition-colors ${
+                        index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
                       }`}
                     >
-                      <td className="px-3 py-2 text-gray-700 font-medium border-r border-gray-200">{index + 1}</td>
-                      <td className="px-3 py-2 text-gray-900 font-semibold border-r border-gray-200">{balance.employee_id}</td>
-                      <td className="px-3 py-2 text-gray-900 border-r border-gray-200">{balance.full_name}</td>
-                      <td className="px-3 py-2 text-gray-700 border-r border-gray-200">{balance.department}</td>
-                      <td className="px-3 py-2 border-r border-gray-200">
+                      <td className="px-2 py-2 text-center font-medium text-gray-700 text-xs">{index + 1}</td>
+                      <td className="px-2 py-2 font-mono text-xs text-blue-600 font-medium">{balance.employee_id}</td>
+                      <td className="px-2 py-2 text-gray-900 font-medium text-xs">{balance.full_name}</td>
+                      <td className="px-2 py-2 text-gray-700 text-xs">{balance.department}</td>
+                      <td className="px-2 py-2">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           balance.employee_group === 'group_a' 
                             ? 'bg-blue-100 text-blue-800 border border-blue-200' 
@@ -2292,22 +2292,10 @@ export default function Reports() {
                           {balance.employee_group === 'group_a' ? 'Group A' : 'Group B'}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-gray-700 font-medium border-r border-gray-200">{balance.annual_entitlement}</td>
-                      <td className="px-3 py-2 border-r border-gray-200">
-                        <span className={`font-medium ${balance.used_days > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                          {balance.used_days}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 border-r border-gray-200">
-                        <span className={`font-medium ${balance.remaining_days < 10 ? 'text-red-600' : 'text-green-600'}`}>
-                          {balance.remaining_days}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className={`font-medium ${balance.utilization_percentage > 80 ? 'text-red-600' : balance.utilization_percentage > 50 ? 'text-orange-600' : 'text-green-600'}`}>
-                          {balance.utilization_percentage}%
-                        </span>
-                      </td>
+                      <td className="px-2 py-2 text-center font-semibold text-green-600 text-xs">{balance.annual_entitlement}</td>
+                      <td className="px-2 py-2 text-center font-semibold text-orange-600 text-xs">{balance.used_days}</td>
+                      <td className="px-2 py-2 text-center font-semibold text-purple-600 text-xs">{balance.remaining_days}</td>
+                      <td className="px-2 py-2 text-center font-medium text-xs text-gray-600">{balance.utilization_percentage}%</td>
                     </tr>
                   ))}
                 </tbody>

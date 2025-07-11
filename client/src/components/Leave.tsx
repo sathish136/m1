@@ -159,33 +159,33 @@ export default function Leave() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">S.No</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Employee ID</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Name</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Group</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Eligible Leave</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Leave Taken</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Leave Balance</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Usage %</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Status</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs">S.No</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs">Employee ID</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs">Name</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700 text-xs">Group</th>
+                    <th className="text-center py-2 px-3 font-semibold text-gray-700 text-xs">Eligible Leave</th>
+                    <th className="text-center py-2 px-3 font-semibold text-gray-700 text-xs">Leave Taken</th>
+                    <th className="text-center py-2 px-3 font-semibold text-gray-700 text-xs">Leave Balance</th>
+                    <th className="text-center py-2 px-3 font-semibold text-gray-700 text-xs">Usage %</th>
+                    <th className="text-center py-2 px-3 font-semibold text-gray-700 text-xs">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leaveBalances.map((employee, index) => (
                     <tr key={employee.employee_id} className={`border-b hover:bg-gray-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
-                      <td className="py-3 px-4 text-center font-medium text-gray-700">{index + 1}</td>
-                      <td className="py-3 px-4 font-mono text-xs text-blue-600 font-medium">{employee.employee_id}</td>
-                      <td className="py-3 px-4 text-gray-900 font-medium">{employee.full_name}</td>
-                      <td className="py-3 px-4">
+                      <td className="py-2 px-3 text-center font-medium text-gray-700 text-xs">{index + 1}</td>
+                      <td className="py-2 px-3 font-mono text-xs text-blue-600 font-medium">{employee.employee_id}</td>
+                      <td className="py-2 px-3 text-gray-900 font-medium text-xs">{employee.full_name}</td>
+                      <td className="py-2 px-3">
                         <Badge variant={employee.employee_group === 'group_a' ? 'default' : 'secondary'} className="text-xs font-medium">
                           Group {employee.employee_group === 'group_a' ? 'A' : 'B'}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4 text-center font-semibold text-green-600">45</td>
-                      <td className="py-3 px-4 text-center font-semibold text-orange-600">{employee.used_days}</td>
-                      <td className="py-3 px-4 text-center font-semibold text-purple-600">{employee.remaining_days}</td>
-                      <td className="py-3 px-4 text-center text-sm font-medium text-gray-600">{employee.utilization_percentage}%</td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2 px-3 text-center font-semibold text-green-600 text-xs">45</td>
+                      <td className="py-2 px-3 text-center font-semibold text-orange-600 text-xs">{employee.used_days}</td>
+                      <td className="py-2 px-3 text-center font-semibold text-purple-600 text-xs">{employee.remaining_days}</td>
+                      <td className="py-2 px-3 text-center text-xs font-medium text-gray-600">{employee.utilization_percentage}%</td>
+                      <td className="py-2 px-3 text-center">
                         <Badge 
                           variant={
                             employee.usage_category === 'No Leave Taken' ? 'outline' :
