@@ -3313,27 +3313,17 @@ router.get('/api/leave-balances/summary', async (req, res) => {
       return res.json({ summary: { totalEmployees: 0, totalEligibleDays: 0, totalAbsentDays: 0, totalRemainingDays: 0 } });
     }
 
-    // Use raw SQL query to avoid ORM issues
-    const result = await db.execute(sql`
-      SELECT 
-        COUNT(*)::int as total_employees,
-        SUM(annual_entitlement)::int as total_eligible_days,
-        SUM(used_days)::int as total_absent_days,
-        SUM(remaining_days)::int as total_remaining_days
-      FROM leave_balances 
-      WHERE year = ${year}
-    `);
-
-    const stats = result[0];
+    // Get all leave balance records and calculate summary
+    const allBalances = await db.select().from(leaveBalances).where(eq(leaveBalances.year, year));
     
-    res.json({
-      summary: {
-        totalEmployees: stats.total_employees || 0,
-        totalEligibleDays: stats.total_eligible_days || 0,
-        totalAbsentDays: stats.total_absent_days || 0,
-        totalRemainingDays: stats.total_remaining_days || 0
-      }
-    });
+    const summary = {
+      totalEmployees: allBalances.length,
+      totalEligibleDays: allBalances.reduce((sum, record) => sum + record.annualEntitlement, 0),
+      totalAbsentDays: allBalances.reduce((sum, record) => sum + record.usedDays, 0),
+      totalRemainingDays: allBalances.reduce((sum, record) => sum + record.remainingDays, 0)
+    };
+    
+    res.json({ summary });
   } catch (error) {
     console.error('Failed to fetch leave balance summary:', error);
     res.status(500).json({ message: 'Failed to fetch leave balance summary' });
